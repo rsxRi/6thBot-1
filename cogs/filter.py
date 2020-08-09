@@ -92,9 +92,8 @@ class Filter(commands.Cog):
 
         # Adds the filter role, if one exists
         filter_role = self.get_filter_role(guild)
-        if filter_role is None:
-            return
-        await member.add_roles(filter_role)
+        if filter_role is not None:
+            await member.add_roles(filter_role)
 
         create_now_diff = datetime.utcnow() - member.created_at
         if create_now_diff.days < 14:
@@ -104,7 +103,7 @@ class Filter(commands.Cog):
 
         await self.send_welcomes(member)
 
-        if not self.is_manual(guild):
+        if not self.is_manual(guild) and filter_role is not None:
             # Schedule Role removal
             filter_secs = self.get_filter_time(member.guild)
             await sleep(filter_secs)
@@ -273,7 +272,12 @@ class Filter(commands.Cog):
 
     @welcome.command(name="filter")
     @commands.has_guild_permissions(manage_roles=True)
-    async def welcome_filter(self, ctx, role: Role, filter_minutes: int):
+    async def welcome_filter(self, ctx, role: Role = None, filter_minutes: int = 15):
+        if role is None:
+            guild_settings: dict = self.bot.guild_settings[str(ctx.guild.id)]
+            del(guild_settings['filter_role_id'])
+            await ctx.send("Welcome filter role removed, as none was specified.")
+            return
         if filter_minutes < 1:
             await ctx.send("Choose a number of minutes greater than 0.")
             return
